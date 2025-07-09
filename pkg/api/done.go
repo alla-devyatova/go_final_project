@@ -1,0 +1,45 @@
+package api
+
+import (
+	"go1f/pkg/db"
+	"net/http"
+	"time"
+)
+
+func doneHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodPost:
+		id := r.URL.Query().Get("id")
+		task, err := db.GetTask(id)
+		if err != nil {
+			writeJson(w, map[string]string{"error": "задача не найдена"})
+			return
+		}
+		if task.Repeat != "" {
+			new_date, err := NextDate(time.Now(), task.Date, task.Repeat)
+			if err != nil {
+				writeJson(w, map[string]string{"error": "ошибка"})
+				return
+			}
+			var t db.Task
+			t.Comment = task.Comment
+			t.Date = new_date
+			t.Repeat = task.Repeat
+			t.Title = task.Title
+			t.ID = id
+
+			err = db.UpdateTask(&t)
+			if err != nil {
+				writeJson(w, map[string]string{"error": "ошибка"})
+				return
+			}
+		} else {
+			err = db.DeleteTask(id)
+			if err != nil {
+				writeJson(w, map[string]string{"error": "ошибка"})
+				return
+			}
+		}
+		writeJson(w, make(map[string]interface{}))
+	}
+}
