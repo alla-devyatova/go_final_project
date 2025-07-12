@@ -14,103 +14,131 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 		addTaskHandler(w, r)
 	case http.MethodGet:
-		id := r.URL.Query().Get("id")
-		task, err := db.GetTask(id)
-		if err != nil {
-			writeJson(w, map[string]string{"error": "задача не найдена"})
-			return
-		}
-		writeJson(w, task)
+		findTaskHandler(w, r)
 	case http.MethodPut:
-		var task db.Task
-		var buf bytes.Buffer
-
-		// читаем тело запроса
-		_, err := buf.ReadFrom(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// десериализуем JSON
-		if err = json.Unmarshal(buf.Bytes(), &task); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if task.Title == "" {
-			// http.Error(w, err.Error(), http.StatusBadRequest)
-			writeJson(w, map[string]string{"error": "ошибка"})
-			return
-		}
-
-		if checkDate(&task) != nil {
-			// http.Error(w, err.Error(), http.StatusBadRequest)
-			writeJson(w, map[string]string{"error": "ошибка"})
-			return
-		}
-
-		err = db.UpdateTask(&task)
-		if err != nil {
-			writeJson(w, map[string]string{"error": "задача не найдена"})
-			return
-		}
-		writeJson(w, make(map[string]interface{}))
+		updateTaskHandler(w, r)
 	case http.MethodDelete:
-		id := r.URL.Query().Get("id")
-		_, err := db.GetTask(id)
-		if err != nil {
-			writeJson(w, map[string]string{"error": "задача не найдена"})
-			return
-		}
-		err = db.DeleteTask(id)
-		if err != nil {
-			writeJson(w, map[string]string{"error": "ошибка"})
-			return
-		}
-		writeJson(w, make(map[string]interface{}))
+		deleteTaskHandler(w, r)
 	}
 }
 
 func addTaskHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		var task db.Task
-		var buf bytes.Buffer
-
-		// читаем тело запроса
-		_, err := buf.ReadFrom(r.Body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		// десериализуем JSON
-		if err = json.Unmarshal(buf.Bytes(), &task); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if task.Title == "" {
-			// http.Error(w, err.Error(), http.StatusBadRequest)
-			writeJson(w, map[string]string{"error": "ошибка"})
-			return
-		}
-
-		if checkDate(&task) != nil {
-			// http.Error(w, err.Error(), http.StatusBadRequest)
-			writeJson(w, map[string]string{"error": "ошибка"})
-			return
-		}
-
-		id, err := db.AddTask(&task)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		writeJson(w, map[string]int64{"id": id})
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method is not allowed", http.StatusMethodNotAllowed)
+		return
 	}
+
+	var task db.Task
+	var buf bytes.Buffer
+
+	// читаем тело запроса
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// десериализуем JSON
+	err = json.Unmarshal(buf.Bytes(), &task)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if task.Title == "" {
+		writeJson(w, map[string]string{"error": "ошибка, не заполнен заголовок задачи"})
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if checkDate(&task) != nil {
+		writeJson(w, map[string]string{"error": "ошибка, не удалось определить дату задачи"})
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id, err := db.AddTask(&task)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	writeJson(w, map[string]int64{"id": id})
+}
+
+func findTaskHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	task, err := db.GetTask(id)
+	if err != nil {
+		writeJson(w, map[string]string{"error": "ошибка, задача не найдена"})
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	writeJson(w, task)
+}
+
+func updateTaskHandler(w http.ResponseWriter, r *http.Request) {
+	var task db.Task
+	var buf bytes.Buffer
+
+	// читаем тело запроса
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// десериализуем JSON
+	err = json.Unmarshal(buf.Bytes(), &task)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if task.Title == "" {
+		writeJson(w, map[string]string{"error": "ошибка, не заполнен заголовок задачи"})
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if checkDate(&task) != nil {
+		writeJson(w, map[string]string{"error": "ошибка, не удалось определить дату задачи"})
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id := task.ID
+	_, err = db.GetTask(id)
+	if err != nil {
+		writeJson(w, map[string]string{"error": "ошибка, задача не найдена"})
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	err = db.UpdateTask(&task)
+	if err != nil {
+		writeJson(w, map[string]string{"error": "ошибка, не удалось обновить задачу"})
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJson(w, make(map[string]interface{}))
+}
+
+func deleteTaskHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.URL.Query().Get("id")
+	_, err := db.GetTask(id)
+	if err != nil {
+		writeJson(w, map[string]string{"error": "ошибка, задача не найдена"})
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	err = db.DeleteTask(id)
+	if err != nil {
+		writeJson(w, map[string]string{"error": "ошибка, не удалось удалить задачу"})
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJson(w, make(map[string]interface{}))
 }
 
 func writeJson(w http.ResponseWriter, data any) {
