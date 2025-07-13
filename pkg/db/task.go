@@ -21,13 +21,6 @@ func AddTask(task *Task) (int64, error) {
 	var id int64
 	query := `INSERT INTO scheduler (date, title, comment, repeat) VALUES (:date, :title, :comment, :repeat)`
 
-	// db, err := sql.Open("sqlite", "scheduler.db")
-	// if err != nil {
-	// 	return id, err
-	// }
-	// defer db.Close()
-	// res, err := db.Exec(query, sql.Named("date", task.Date), sql.Named("title", task.Title), sql.Named("comment", task.Comment), sql.Named("repeat", task.Repeat))
-
 	res, err := DB.Exec(query, sql.Named("date", task.Date), sql.Named("title", task.Title), sql.Named("comment", task.Comment), sql.Named("repeat", task.Repeat))
 
 	if err != nil {
@@ -39,13 +32,6 @@ func AddTask(task *Task) (int64, error) {
 }
 
 func Tasks(limit int) ([]*Task, error) {
-	// db, err := sql.Open("sqlite", "scheduler.db")
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// defer db.Close()
-	// rows, err := db.Query("SELECT * FROM scheduler ORDER BY date")
-
 	rows, err := DB.Query("SELECT * FROM scheduler ORDER BY date")
 
 	if err != nil {
@@ -82,6 +68,7 @@ func Tasks(limit int) ([]*Task, error) {
 		count = count + 1
 		result = append(result, &t)
 	}
+
 	err = rows.Err()
 	if err != nil {
 		return nil, err
@@ -106,13 +93,6 @@ func GetTask(id string) (*Task, error) {
 
 	var t Task
 
-	// db, err := sql.Open("sqlite", "scheduler.db")
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// defer db.Close()
-	// row := db.QueryRow("SELECT * FROM scheduler WHERE id = :id", sql.Named("id", id_int))
-
 	row := DB.QueryRow("SELECT * FROM scheduler WHERE id = :id", sql.Named("id", id_int))
 
 	err = row.Scan(&t.ID, &t.Date, &t.Title, &t.Comment, &t.Repeat)
@@ -126,40 +106,24 @@ func GetTask(id string) (*Task, error) {
 func UpdateTask(task *Task) error {
 	query := `UPDATE scheduler SET date = :date, title = :title, comment = :comment, repeat = :repeat WHERE id = :id`
 
-	// db, err := sql.Open("sqlite", "scheduler.db")
-	// if err != nil {
-	// 	return err
-	// }
-	// defer db.Close()
-	// res, err := db.Exec(query, sql.Named("id", task.ID), sql.Named("date", task.Date), sql.Named("title", task.Title), sql.Named("comment", task.Comment), sql.Named("repeat", task.Repeat))
-
 	res, err := DB.Exec(query, sql.Named("id", task.ID), sql.Named("date", task.Date), sql.Named("title", task.Title), sql.Named("comment", task.Comment), sql.Named("repeat", task.Repeat))
 
 	if err != nil {
 		return err
 	}
-	// метод RowsAffected() возвращает количество записей к которым
-	// был применена SQL команда
+
 	count, err := res.RowsAffected()
 	if err != nil {
 		return err
 	}
 	if count == 0 {
 		return fmt.Errorf(`incorrect id for updating task`)
-		// return nil
 	}
 	return nil
 }
 
 func DeleteTask(id string) error {
 	query := `DELETE FROM scheduler WHERE id = :id`
-
-	// db, err := sql.Open("sqlite", "scheduler.db")
-	// if err != nil {
-	// 	return err
-	// }
-	// defer db.Close()
-	// _, err = db.Exec(query, sql.Named("id", id))
 
 	_, err := DB.Exec(query, sql.Named("id", id))
 
